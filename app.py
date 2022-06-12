@@ -7,22 +7,17 @@ import dash_daq as daq
 import data
 import layouts
 import styles
+import flask
+
+server = flask.Flask(__name__)
 
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-    # external_stylesheets=[dbc.themes.DARKLY]
+    server=server
 )
 
 app.title = "Steam Games By Gender"
-
-theme = {
-    'dark': True,
-    'detail': '#007439',
-    'primary': '#00EA64',
-    'secondary': '#6E6E6E',
-}
-
 
 app.layout = html.Div([
         html.Div(
