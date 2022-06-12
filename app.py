@@ -82,14 +82,6 @@ def update_layout(genres):
         layouts.counter(df),
         layouts.score(df)]
 
-    # left_container = daq.DarkThemeProvider(
-    #                 theme=theme,
-    #                 children=[
-    #                     layouts.gender_selector("genres-selector", value=genres),
-    #                     layouts.counter(df),
-    #                     layouts.score(df)]
-    #             )
-
     central_container = [
         layouts.table(df, data.table_columns),
         layouts.date_plot(df)]
