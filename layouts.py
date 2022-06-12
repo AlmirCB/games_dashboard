@@ -100,7 +100,7 @@ def pie(df, genres):
                              marker=marker
                             )])
     
-    fig.update(layout_title_text='Subgenders',
+    fig.update(layout_title_text='Subgenres',
             layout_showlegend=False)
     
     fig.update_layout(styles.plotly_layout)
