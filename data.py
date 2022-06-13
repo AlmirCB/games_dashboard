@@ -46,13 +46,8 @@ def games_filtered(genre_list=None):
     return games[mask]
 
 def remove_outliers(df, columns, factor=3):
-    print("ENTRA")
     if not columns:
         return df
-    
-    if len(columns) == 1:
-        return df[(np.abs(stats.zscore(df[columns])) < factor)]
+
     result = df[(np.abs(stats.zscore(df[columns])) <3).all(axis=1)]
-    print("Remove_outliers")
-    print(result)
     return result
