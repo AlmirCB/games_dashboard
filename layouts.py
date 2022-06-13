@@ -8,6 +8,9 @@ from dash import html, dash_table
 import dash_daq as daq
 import data
 import styles as styles
+import dash_bootstrap_components as dbc
+
+
 
 
 def darkTheme(element):
@@ -16,18 +19,77 @@ def darkTheme(element):
             theme=styles.theme2,
             children=[element]))
 
+def title(text):
+    return(
+        html.H1(
+            text, 
+            style={
+                "color": styles.theme2["primary"],
+                "background": styles.theme["background_color"],"position": "relative",
+                "margin-bottom": "-30px",
+                "text-align": "center",
+                "width": "120%",
+                "left": "-10%",
+                "border-top": "1px solid",
+                "border-bottom": "1px solid"}))
+
+def modal(header=None, children=None, footer=None, button=None):
+    return html.Div(
+        [
+            html.Div(
+                [dbc.Button(button or "Open Modal", id="open", n_clicks=0)], 
+                style={"display": "flex", "justify-content": "space-around"}),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle(header)),
+                    dbc.ModalBody(children),
+                    dbc.ModalFooter([
+                        footer,
+                        dbc.Button(
+                            "Close", id="close", className="ms-auto", n_clicks=0
+                        )]
+                    ),
+                ],
+                id="modal",
+                is_open=False,
+            ),
+        ]
+    )
+
 def gender_selector(id = None, value = []): 
     return(
-        html.Label([
-            "Game Tag",
-            dcc.Dropdown(
-                id=id, clearable=True,
-                multi=True,
-                value=value, options=[
-                    {'label': c, 'value': c}
-                    for c in data.all_genres
-                ])
-        ]))
+        html.Label(
+            children = [
+                "Game Tag",
+                dcc.Dropdown(
+                    id=id, clearable=True,
+                    multi=True,
+                    value=value, options=[
+                        {'label': c, 'value': c}
+                        for c in data.all_genres
+                    ])],
+            style={"width": "100%"},
+        ))
+
+def remove_outliers_selector(id = None, value = []):
+    return(
+        html.Label(
+            children = [
+                "Remove Outliers",
+                dcc.Dropdown(
+                    id=id, clearable=True,
+                    multi=True,
+                    value=value, options=[
+                        {'label': c, 'value': c}
+                        for c in data.numeric_filter])],
+            style={"width": "100%"}))
+
+def filters_modal(gen_id = None, gen_values = [], out_id = None, out_values = None):
+    children = [
+        gender_selector(gen_id, gen_values),
+        remove_outliers_selector(out_id, out_values)
+    ]
+    return(modal("Filters", children, "Query", "Select data"))
 
 def counter(df,):  
     count = len(df.index)

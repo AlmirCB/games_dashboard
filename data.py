@@ -1,6 +1,7 @@
 import pandas as pd
+import numpy as np
+from scipy import stats
 import csv
-
 
 games = pd.read_csv("games.csv")
 
@@ -15,7 +16,7 @@ games["Release date"] = games["Release date"].apply(add_day)
 games['Release date'] =  pd.to_datetime(games['Release date'], format='%b %d, %Y')
 
 table_columns = ["Name", 'Price', 'Release date', 'DLC count', 'Achievements', 'Recommendations', 'Metacritic score', 'Required age']
-
+numeric_filter = ['Price', 'DLC count', 'Achievements', 'Recommendations', 'Metacritic score', 'Required age']
 def create_genres_csv_file(file_name):
     all_genres = []
     for index, row in games.iterrows():
@@ -43,3 +44,15 @@ def games_filtered(genre_list=None):
     search_string = "|".join(genre_list)
     mask = games["Genres"].str.contains(search_string) | games["Categories"].str.contains(search_string)
     return games[mask]
+
+def remove_outliers(df, columns, factor=3):
+    print("ENTRA")
+    if not columns:
+        return df
+    
+    if len(columns) == 1:
+        return df[(np.abs(stats.zscore(df[columns])) < factor)]
+    result = df[(np.abs(stats.zscore(df[columns])) <3).all(axis=1)]
+    print("Remove_outliers")
+    print(result)
+    return result
