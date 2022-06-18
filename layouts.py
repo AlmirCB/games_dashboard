@@ -3,7 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 # from jupyter_dash import JupyterDash
 import dash
-import dash_core_components as dcc
+from dash import dcc
 from dash import html, dash_table
 import dash_daq as daq
 import data
@@ -33,6 +33,10 @@ def title(text):
                 "border-top": "1px solid",
                 "border-bottom": "1px solid"}))
 
+def memory_app():
+    return(dcc.Store(id="memory-app", data={}))
+
+#FILTERING
 def modal(header=None, children=None, footer=None, button=None):
     return html.Div(
         [
@@ -56,47 +60,52 @@ def modal(header=None, children=None, footer=None, button=None):
         ]
     )
 
-def gender_selector(id = None, value = []): 
+def genres_selector(): 
     return(
         html.Label(
             children = [
                 "Game Tag",
                 dcc.Dropdown(
-                    id=id, clearable=True,
+                    id="genres-selector", clearable=True,
                     multi=True,
-                    value=value, options=[
+                    value=[],
+                    options=[
                         {'label': c, 'value': c}
                         for c in data.all_genres
                     ])],
             style={"width": "100%"},
         ))
 
-def remove_outliers_selector(id = None, value = []):
+def remove_outliers_selector():
     return(
         html.Label(
             children = [
                 "Remove Outliers",
                 dcc.Dropdown(
-                    id=id, clearable=True,
-                    multi=True,
-                    value=value, options=[
+                    id="outliers-selector", clearable=True,
+                    multi=True, 
+                    value=[],
+                    options=[
                         {'label': c, 'value': c}
                         for c in data.numeric_filter])],
             style={"width": "100%"}))
 
-def filters_modal(gen_id = None, gen_values = [], out_id = None, out_values = None):
+def filters_modal():
     children = [
-        gender_selector(gen_id, gen_values),
-        remove_outliers_selector(out_id, out_values)
+        genres_selector(),
+        remove_outliers_selector(),
+        # filters_container(data.games)
     ]
     return(modal("Filters", children, "Query", "Select data"))
 
-def counter(df,):  
-    count = len(df.index)
+# PRINCIPAL COMPONENTS 
+def counter(df):  
+    count = data.count(data.games)
     
     return(darkTheme(
         daq.LEDDisplay(
             # label="Number of games",
+            id="counter",
             label={
                 "label": "Number of games",
                 "style": styles.daq_label
@@ -106,10 +115,11 @@ def counter(df,):
             value=count)))
 
 def score(df):
-    mean = df['Metacritic score'][df['Metacritic score'] != 0].mean()
+    mean = data.metacritic_mean(df)
     return(darkTheme(
         daq.Gauge(
             # color={"gradient":True,"ranges":{"red":[0,33], "yellow":[33,66],"green":[66,100],}},
+            id="score",
             color=styles.theme2['primary'],
             className='dark-theme-control',
             value=mean,
@@ -120,12 +130,12 @@ def score(df):
             max=100,
             min=0)))
 
-def table(df, columns):
-    table = df[columns]
+def table(df):
+    table_dict, columns = data.table(df)
     return(
         dash_table.DataTable(
-            table.to_dict('records'),
-            [{"name": i, "id": i} for i in table.columns], 
+            table_dict,
+            columns,
             id='tbl',
             style_cell={
                 'overflow': 'hidden',
@@ -136,71 +146,128 @@ def table(df, columns):
             page_current= 0,
             page_size= 10))
 
-def pie(df, genres):
-    labels = []
-    values = []
-    for genre in genres:
-        subset = df[df['Genres'].str.contains(genre)==True]
-        labels.append(genre)
-        values.append(len(subset.index))
-    
-    labels = [x for _, x in sorted(zip(values, labels), reverse=True)]
-    values = sorted(values, reverse=True)
-    labels = labels[0:9]
-    values = values[0:9]
-
-    colors =  ['rgb(56, 75, 126)']
-
-    marker = {
-            "colors": colors*10,
-            "line":{
-                "color": 'rgb(4,15,15)',
-                "width": 2}}
-
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='label+percent',
-                             insidetextorientation='radial',
-                             marker=marker
-                            )])
-    
-    fig.update(layout_title_text='Subgenres',
-            layout_showlegend=False)
-    
-    fig.update_layout(styles.plotly_layout)
-
-
-    return dcc.Graph(figure=fig)
+def pie(df):
+    return dcc.Graph(id="pie-chart", figure=data.pie(df))
 
 def date_plot(df):
-    color = ['rgb(56, 75, 126)'] * len(df.index)
-    # color = ['rgb(0, 234, 100)'] * len(df.index)
-    fig = px.scatter(
-            df, x="Release date", y="Price",
-            render_mode="webgl", title="Price by Release Date",
-            hover_name="Name",
-            color=color)
+    return dcc.Graph(id="scatter-plot", figure=data.scatter_plot(df))
 
-    fig.update_layout(styles.plotly_layout) 
-    fig.layout.update(showlegend=False)
+def os_barchart(df):
+    return dcc.Graph(id="bar-chart", figure=data.bar_chart(df))
 
-    return dcc.Graph(figure=fig)
+def filters_container(df=None):
+    filters_container_layout = html.Div([
+        dcc.Store(
+                id='filters-memory',
+                data={}),
+        html.Button("Add Group", id="add-filter-group", n_clicks=0),
+        html.Div("QUERY"),
+        html.Div(id='filter-groups-container', children = [], style={'display': 'flex', 'flex-direction': 'column'})
+    ], style={'padding': 10, 'flex': 4})
 
-def os_barchar(df):
-    color = ['rgb(56, 75, 126)'] * 3
-    win_games = len(df[df['Windows']].index)
-    mac_games = len(df[df['Mac']].index)
-    linux_games = len(df[df['Linux']].index)
-    values = [['Windows', win_games], ['Mac', mac_games], ['Linux', linux_games]]
-    df_os = pd.DataFrame(values, columns = ["Operating System", "Number of games"])
-    fig = px.bar(
-        df_os, 
-        x='Operating System', 
-        y='Number of games',
-        title="Games per OS",
-        height=400,
-        color=color)
-    
-    fig.update_layout(styles.plotly_layout)
-    fig.update_layout(xaxis_title=None, yaxis_title=None, yaxis_showticklabels=False)
-    fig.layout.update(showlegend=False)
+    return filters_container_layout
 
-    return dcc.Graph(figure=fig)
+def filter_group(n:int, variables:list, index:int, group_memory):
+    children = group_memory
+    return(
+        html.Div([
+            dcc.Store(
+                id={"type": "group-memory", "index":index},
+                data={}
+            ),
+            html.Button("+", id={"type":"add-filter", "index": index}, n_clicks=0),
+            html.Div(id='group-container', children=[], style={'display': 'flex', 'flex-flow': 'column nowrap'}),
+            html.Button("-", id={"type":"delete-group", "index": index}, n_clicks=0),
+        ])
+    )
+
+def filter_row(n:int, variables:list):
+    """Will return a Div with following components:
+            - AND / OR dropdown selector
+            - Variable selector with given variables argument
+            - Checklist to negate filter
+            - A div with needed inputs for filtering
+    """
+    return(
+        html.Div([
+            dcc.Store(id={'type':'filter-row-memory', 'index': n}),
+            dcc.Dropdown(
+                id={'type':'filter_operator', 'index': n}, clearable=False,
+                value="AND", options=[
+                    {'label': "AND", 'value': "AND"},
+                    {'label': "OR", 'value': "OR"}
+                ],
+                style={'width': '100%'}),
+            
+            dcc.Dropdown(
+                id={'type':'filter-variable-selector', 'index': n}, clearable=True,
+                multi=False,
+                placeholder="Variable",
+                value=[], options=[
+                    {'label': c, 'value': c}
+                    for c in variables
+                ],
+                style={'width': '100%'}),
+                
+            dcc.Checklist(
+                id={'type':"filter-negate", 'index': n},
+                options=["NOT"],
+                style={'width': '100%'}),
+
+            dcc.Dropdown(
+                id={'type':'filter-type', 'index': n}, clearable=True,
+                multi=False,
+                placeholder="Operator",
+                value=[], options=[
+                    {'label': "Lower than", 'value': "lt"},
+                    {'label': "Greater than", 'value': "gt"},
+                    {'label': "Between", 'value': "btw"},
+                    {'label': "Equals", 'value': "eq"},
+                    {'label': "in", 'value': "in"},
+                ],
+                style={'width': '100%'}),
+            html.Div(
+                id={'type': "f-vars-container", "index": n}, 
+                children = [], 
+                style=styles.one_row),
+
+            html.Button("-", id={"type":"delete-filter", "index": n}, n_clicks=0),
+
+        ], style={'padding': 10, 'flex': 1, 'display': 'flex', 'flex-flow': "row nowrap"})
+    )
+
+left_container = html.Div(
+            id = "left-container",
+            children=[
+                        title("STEAM DATA EXPLORER"),
+                        filters_modal(),
+                        counter(data.games),
+                        score(data.games)
+            ],
+            style=styles.style_mix(
+                styles.basic, 
+                styles.box(1),
+                styles.grid_column(),
+                {"background": styles.theme["box_color"]}))
+
+central_container = html.Div(
+            id = "central-container",
+            children = [
+                table(data.games),
+                date_plot(data.games)
+            ],
+            style=styles.style_mix(
+                styles.basic, 
+                styles.box(7),
+                styles.grid_column()))
+
+right_container = html.Div(
+            id = "right-container",
+            children = [
+                pie(data.games),
+                os_barchart(data.games),
+            ],
+            style=styles.style_mix(
+                styles.basic, 
+                styles.box(2),
+                styles.grid_column()))

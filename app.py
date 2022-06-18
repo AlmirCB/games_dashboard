@@ -4,6 +4,7 @@ from dash.dependencies import Input, Output
 from dash.dependencies import Input, Output
 import dash_daq as daq
 import dash_bootstrap_components as dbc
+import pandas
 import data
 import layouts
 import styles
@@ -21,72 +22,76 @@ app = dash.Dash(
 app.title = "Steam Games By Gender"
 
 app.layout = html.Div([
-        html.Div(
-            id = "left-container",
-            children=[
-                        layouts.title("STEAM DATA EXPLORER"),
-                        layouts.filters_modal("genres-selector", [], "outliers_selector", []),
-                        layouts.counter(data.games),
-                        layouts.score(data.games)
-            ],
-            style=styles.style_mix(
-                styles.basic, 
-                styles.box(1),
-                styles.grid_column(),
-                {"background": styles.theme["box_color"]})),
-        
-        html.Div(
-            id = "central-container",
-            children = [
-                layouts.table(data.games, data.table_columns),
-                layouts.date_plot(data.games)
-            ],
-            style=styles.style_mix(
-                styles.basic, 
-                styles.box(7),
-                styles.grid_column())),
-        
-        html.Div(
-            id = "right-container",
-            children = [
-                layouts.pie(data.games, data.all_genres),
-                layouts.os_barchar(data.games),
-            ],
-            style=styles.style_mix(
-                styles.basic, 
-                styles.box(2),
-                styles.grid_column()))
+        layouts.memory_app(),
+        layouts.left_container,
+        layouts.central_container,
+        layouts.right_container,
         ], 
     style=styles.style_mix(
         styles.body)
     )
 
-@app.callback(
-    Output('left-container', 'children'),
-    Output('central-container', 'children'),
-    Output('right-container', 'children'),
-    Input("genres-selector", "value"),
-    Input("outliers_selector", "value")
-)
-def update_layout(genres, outliers):
-    pie_genres = [g for g in data.all_genres if g not in genres ]
-    df = data.games_filtered(genres)
-    df = data.remove_outliers(df, outliers)
-    print(outliers)
-    print(df)
-    left_container = [
-        layouts.title("STEAM DATA EXPLORER"),
-        layouts.filters_modal("genres-selector", genres, "outliers_selector", outliers),
-        layouts.counter(df),
-        layouts.score(df)]
+# @app.callback(
+#     Output('left-container', 'children'),
+#     Output('central-container', 'children'),
+#     Output('right-container', 'children'),
+#     Output('memory-app', "data"),
+#     Input("genres-selector", "value"),
+#     Input("outliers-selector", "value"),
+#     State("memory-app", "data")
+# )
+# def update_layout(genres, outliers, memory_app):
+#     updated_memory = {}
+#     print("Memory app: ", memory_app)
+#     pie_genres = [g for g in data.all_genres if g not in genres ]
+#     df = data.games_filtered(genres)
+#     df = data.remove_outliers(df, outliers)
+#     print(outliers)
+#     print(df)
+#     left_container = [
+#         layouts.filters_modal(),
+#         layouts.counter(df),
+#         layouts.score(df)]
 
-    central_container = [
-        layouts.table(df, data.table_columns),
-        layouts.date_plot(df)]
-    right_container = [
-        layouts.pie(df, pie_genres),
-        layouts.os_barchar(df)]
-    return (left_container, central_container, right_container)
+#     central_container = [
+#         layouts.table(df, data.table_columns),
+#         layouts.date_plot(df)]
+#     right_container = [
+#         layouts.pie(df, pie_genres),
+#         layouts.os_barchar(df)]
+#     return (left_container, central_container, right_container, updated_memory)
+
+@app.callback(
+    Output('counter', 'value'),
+    Output('score', 'value'),
+    Output('tbl', 'data'),
+    Output('tbl', 'columns'),
+    Output('pie-chart', 'figure'),
+    Output('scatter-plot', 'figure'),
+    Output('bar-chart', "figure"),
+    Input("genres-selector", "value"),
+    Input("outliers-selector", "value"),
+#   Input("filters-memory", "data")
+)
+def update(genres, outliers):
+    df = data.games_filtered(data.games, genres)
+    df = data.remove_outliers(df, outliers)
+    print("Update")
+    counter = data.count(df)
+    score = data.metacritic_mean(df)
+    table_data, table_columns = data.table(df)
+    pie = data.pie(df, genres)
+    scatter = data.scatter_plot(df)
+    bar = data.bar_chart(df)
+    return(
+        counter,
+        score,
+        table_data,
+        table_columns,
+        pie,
+        scatter,
+        bar        
+    )
 
 @app.callback(
     Output("modal", "is_open"),
